@@ -1,0 +1,124 @@
+{
+  "name": "AI Email Classifier",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "email-classifier",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -368,
+        -128
+      ],
+      "id": "6384a11d-4c4e-4cd7-996d-1247b3a6a808",
+      "name": "Webhook",
+      "webhookId": "604b4f4a-2dd1-426f-82ab-848b026e43be"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"temperature\": 0.1,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an email classifier. Respond in JSON only with no extra text: {\\\"category\\\": \\\"URGENT|BILLING|SUPPORT|SALES|HR|SPAM|INFO\\\", \\\"urgency\\\": \\\"HIGH|MEDIUM|LOW\\\", \\\"summary\\\": \\\"one sentence\\\", \\\"reply\\\": \\\"suggested reply in 2-3 sentences\\\"}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{ $('Webhook').item.json.body.email_text }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -160,
+        -128
+      ],
+      "id": "747e5cd3-6eb4-4049-a09d-22f95906c1f2",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "DM9qYLqElVIGqLus",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.choices[0].message.content;\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch(e) {\n  parsed = { raw: content };\n}\n\nreturn {\n  category:  parsed.category  || \"UNKNOWN\",\n  urgency:   parsed.urgency   || \"MEDIUM\",\n  summary:   parsed.summary   || \"\",\n  reply:     parsed.reply     || \"\",\n  processed_at: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -128
+      ],
+      "id": "26af1bb0-f255-4c8a-b31c-661b8eea646b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        304,
+        -128
+      ],
+      "id": "464350f4-e989-49db-9164-b79438574797",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "62cebecf-9948-4582-846b-30e79eda621d",
+  "meta": {
+    "instanceId": "c2aa833116d0a7cf3205701ed105661bc13054a047475d61262a5748967a73fd"
+  },
+  "id": "xv4liPsMRjUeaw8l",
+  "tags": []
+}
